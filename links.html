@@ -291,15 +291,52 @@ body {
     .card { padding: 28px 20px 24px; border-radius: 20px; }
     .name { font-size: 20px; }
 }
+/* ── Glitch ── */
+@keyframes glitch-a{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-3px,0)}40%{clip-path:inset(60% 0 20% 0);transform:translate(3px,0)}80%{clip-path:inset(80% 0 5% 0);transform:translate(-3px,0)}}
+@keyframes glitch-b{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(3px,0)}40%{clip-path:inset(10% 0 70% 0);transform:translate(-3px,0)}80%{clip-path:inset(0 0 90% 0);transform:translate(3px,0)}}
+.glitch-name{position:relative;display:inline-block;}
+.glitch-name::before,.glitch-name::after{content:attr(data-text);position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none;}
+.glitch-name::before{color:#0d59f2;text-shadow:2px 0 #0d59f2;}
+.glitch-name::after{color:#ef4444;text-shadow:-2px 0 #ef4444;}
+.glitch-name.glitching::before{animation:glitch-a .3s steps(2) forwards;opacity:1;}
+.glitch-name.glitching::after{animation:glitch-b .3s steps(2) forwards;opacity:1;}
+
+/* ── Cursor trail ── */
+.cursor-dot{position:fixed;border-radius:50%;background:radial-gradient(circle,rgba(13,89,242,.9),rgba(13,89,242,0));pointer-events:none;z-index:9999;transform:translate(-50%,-50%);}
+
+/* ── Touch ripple ── */
+@keyframes touch-ripple{0%{transform:translate(-50%,-50%) scale(0);opacity:.7}100%{transform:translate(-50%,-50%) scale(4);opacity:0}}
+.touch-ripple{position:fixed;width:40px;height:40px;border-radius:50%;border:2px solid rgba(13,89,242,.7);pointer-events:none;z-index:9999;animation:touch-ripple .6s ease-out forwards;}
+
+/* ── Intro overlay ── */
+#intro-overlay{position:fixed;inset:0;background:#080a0e;z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:pointer;}
+#intro-overlay .i-term{font-family:'IBM Plex Mono',monospace;color:#0d59f2;font-size:clamp(13px,2.5vw,18px);letter-spacing:.06em;}
+#intro-overlay .i-name{font-family:'Syne',sans-serif;font-weight:900;font-size:clamp(28px,7vw,72px);color:#fff;letter-spacing:-.02em;opacity:0;transform:scale(.85);transition:opacity .5s,transform .5s;}
+#intro-overlay .i-skip{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.3);font-size:11px;letter-spacing:.2em;margin-top:16px;text-transform:uppercase;}
+#intro-overlay canvas{position:absolute;inset:0;opacity:.12;}
+@keyframes introFade{to{opacity:0;pointer-events:none;}}
+#intro-overlay.fade-out{animation:introFade .45s ease-out forwards;}
+
+/* ── Card 3D perspective ── */
+.card-3d-wrapper { perspective: 900px; }
 </style>
 </head>
 <body>
+
+<!-- ── Интро ── -->
+<div id="intro-overlay">
+    <canvas id="intro-mc"></canvas>
+    <div class="i-term" id="i-term"></div>
+    <div class="i-name" id="i-name">ЧИМИТДОРЖИ</div>
+    <div class="i-skip">нажмите для пропуска</div>
+</div>
 
 <div class="bg-grid"></div>
 <div class="bg-glow"></div>
 <div class="scan-line"></div>
 
-<div class="card">
+<div class="card-3d-wrapper">
+<div class="card" id="tilt-card">
     <div class="corner tl"></div>
     <div class="corner tr"></div>
     <div class="corner bl"></div>
@@ -315,7 +352,7 @@ body {
     </div>
 
     <!-- Имя -->
-    <div class="name">Дарижапов Чимитдоржи</div>
+    <div class="name glitch-name" id="glitch-name-l" data-text="Дарижапов Чимитдоржи">Дарижапов Чимитдоржи</div>
     <div class="handle">@chimitdorzhi</div>
     <div class="bio">
         <span>Предприниматель · AI/ML инженер</span><br/>
@@ -467,9 +504,8 @@ body {
         <span class="tag">📍 Забайкалье</span>
     </div>
 
-</div>
-
-<!-- Футер -->
+</div><!-- /card -->
+</div><!-- /card-3d-wrapper -->
 <div class="footer">Дарижапов Чимитдоржи · 2026</div>
 
 <script>
@@ -500,7 +536,111 @@ document.querySelectorAll('.link-btn').forEach(btn => {
     });
 });
 
-const style = document.createElement('style');
+// ════════════ ВАУ-ЭФФЕКТЫ ════════════
+
+// ── Интро-анимация ──
+(function(){
+    const ov=document.getElementById('intro-overlay'),
+          tm=document.getElementById('i-term'),
+          nm=document.getElementById('i-name'),
+          mc=document.getElementById('intro-mc');
+    if(!ov)return;
+    const mctx=mc.getContext('2d');
+    mc.width=window.innerWidth; mc.height=window.innerHeight;
+    const cols=Math.floor(window.innerWidth/16), drops=Array(cols).fill(0);
+    const chars='01アイウエオカキクケコ';
+    let mraf;
+    function drawMat(){
+        mctx.fillStyle='rgba(8,10,14,0.07)';mctx.fillRect(0,0,mc.width,mc.height);
+        mctx.fillStyle='#0d59f2';mctx.font='14px monospace';
+        drops.forEach((y,i)=>{mctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*16,y*16);drops[i]=(y*16>mc.height&&Math.random()>.975)?0:y+1;});
+        mraf=requestAnimationFrame(drawMat);
+    }
+    drawMat();
+    const lines=['>_ ИНИЦИАЛИЗАЦИЯ...', '>_ ЗАГРУЗКА ПРОФИЛЯ...', '>_ ДАРИЖАПОВ ЧИМИТДОРЖИ', '>_ ГОТОВО ✓'];
+    let li=0,ci=0;
+    tm.textContent='';
+    function type(){
+        if(li>=lines.length){nm.style.opacity='1';nm.style.transform='scale(1)';setTimeout(done,900);return;}
+        if(ci<lines[li].length){tm.textContent=lines[li].slice(0,++ci);setTimeout(type,li===2?55:38);}
+        else{setTimeout(()=>{li++;ci=0;tm.textContent='';type();},li===lines.length-1?500:260);}
+    }
+    setTimeout(type,200);
+    function done(){cancelAnimationFrame(mraf);ov.classList.add('fade-out');setTimeout(()=>ov.remove(),480);}
+    ov.addEventListener('click',done);
+})();
+
+// ── 3D-карточка tilt ──
+(function(){
+    const card=document.getElementById('tilt-card');
+    if(!card||window.matchMedia('(pointer:coarse)').matches)return;
+    card.addEventListener('mousemove',e=>{
+        const r=card.getBoundingClientRect();
+        const x=(e.clientX-r.left)/r.width-.5;
+        const y=(e.clientY-r.top)/r.height-.5;
+        card.style.transform=`rotateY(${x*18}deg) rotateX(${-y*14}deg) scale(1.02)`;
+        card.style.boxShadow=`${-x*20}px ${-y*20}px 40px rgba(13,89,242,0.18), 0 0 60px rgba(13,89,242,0.08)`;
+    });
+    card.addEventListener('mouseleave',()=>{
+        card.style.transform='rotateY(0) rotateX(0) scale(1)';
+        card.style.boxShadow='';
+    });
+    card.style.transition='transform .15s ease, box-shadow .15s ease';
+})();
+
+// ── Курсор-след ──
+(function(){
+    if(window.matchMedia('(pointer:coarse)').matches){
+        document.addEventListener('touchstart',e=>{
+            Array.from(e.changedTouches).forEach(t=>{
+                const r=document.createElement('div');r.className='touch-ripple';
+                r.style.left=t.clientX+'px';r.style.top=t.clientY+'px';
+                document.body.appendChild(r);setTimeout(()=>r.remove(),700);
+            });
+        },{passive:true});
+        return;
+    }
+    const N=8, trail=[];
+    const history=Array(N).fill({x:-100,y:-100});
+    for(let i=0;i<N;i++){
+        const d=document.createElement('div');d.className='cursor-dot';
+        d.style.cssText=`width:${8-i*.6}px;height:${8-i*.6}px;opacity:${(1-i/N)*.8}`;
+        document.body.appendChild(d);trail.push(d);
+    }
+    const m={x:-100,y:-100};
+    document.addEventListener('mousemove',e=>{m.x=e.clientX;m.y=e.clientY;});
+    function anim(){
+        history.unshift({x:m.x,y:m.y});history.pop();
+        history.forEach((p,i)=>{trail[i].style.left=p.x+'px';trail[i].style.top=p.y+'px';});
+        requestAnimationFrame(anim);
+    }
+    anim();
+})();
+
+// ── Звук hover ──
+(function(){
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    let ac;
+    function beep(){
+        if(!ac)ac=new AC();
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.connect(g);g.connect(ac.destination);
+        o.type='square';o.frequency.setValueAtTime(880,ac.currentTime);
+        o.frequency.exponentialRampToValueAtTime(440,ac.currentTime+.06);
+        g.gain.setValueAtTime(.04,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.08);
+        o.start();o.stop(ac.currentTime+.09);
+    }
+    document.querySelectorAll('a,.link-btn').forEach(el=>el.addEventListener('mouseenter',beep));
+})();
+
+// ── Glitch на имени ──
+(function(){
+    const el=document.getElementById('glitch-name-l');if(!el)return;
+    setInterval(()=>{el.classList.add('glitching');setTimeout(()=>el.classList.remove('glitching'),320);},5000);
+    setTimeout(()=>{el.classList.add('glitching');setTimeout(()=>el.classList.remove('glitching'),320);},1800);
+})();
+
+
 style.textContent = `
 @keyframes ripple {
     to { transform: scale(2.5); opacity: 0; }

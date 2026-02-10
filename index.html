@@ -291,10 +291,85 @@
         .bnav-item.active .material-icons { color: var(--primary); }
 
         section, footer, nav { position: relative; z-index: 2; }
+    /* ── Glitch эффект ── */
+    @keyframes glitch-1 {
+        0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-3px,0)}
+        20%{clip-path:inset(30% 0 50% 0);transform:translate(3px,0)}
+        40%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}
+        60%{clip-path:inset(10% 0 80% 0);transform:translate(2px,0)}
+        80%{clip-path:inset(80% 0 5% 0);transform:translate(-3px,0)}
+    }
+    @keyframes glitch-2 {
+        0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(3px,0)}
+        20%{clip-path:inset(80% 0 5% 0);transform:translate(-3px,0)}
+        40%{clip-path:inset(10% 0 70% 0);transform:translate(2px,0)}
+        60%{clip-path:inset(40% 0 45% 0);transform:translate(-2px,0)}
+        80%{clip-path:inset(0 0 90% 0);transform:translate(3px,0)}
+    }
+    .glitch-wrap { position:relative; display:inline-block; }
+    .glitch-wrap::before,.glitch-wrap::after {
+        content:attr(data-text); position:absolute; top:0; left:0; width:100%; height:100%;
+        opacity:0; pointer-events:none;
+    }
+    .glitch-wrap::before { color:#0d59f2; text-shadow:2px 0 #0d59f2; }
+    .glitch-wrap::after  { color:#ef4444; text-shadow:-2px 0 #ef4444; }
+    .glitch-wrap.glitching::before { animation:glitch-1 0.3s steps(2) forwards; opacity:1; }
+    .glitch-wrap.glitching::after  { animation:glitch-2 0.3s steps(2) forwards; opacity:1; }
+
+    /* ── Курсор-след ── */
+    .cursor-dot {
+        position:fixed; width:8px; height:8px; border-radius:50%;
+        background:radial-gradient(circle,rgba(13,89,242,0.9),rgba(13,89,242,0));
+        pointer-events:none; z-index:9999; transform:translate(-50%,-50%);
+        transition:opacity 0.3s;
+    }
+    /* ── Тач-рябь ── */
+    @keyframes touch-ripple {
+        0%{transform:translate(-50%,-50%) scale(0);opacity:.7}
+        100%{transform:translate(-50%,-50%) scale(4);opacity:0}
+    }
+    .touch-ripple {
+        position:fixed; width:40px; height:40px; border-radius:50%;
+        border:2px solid rgba(13,89,242,0.7); pointer-events:none; z-index:9999;
+        animation:touch-ripple 0.6s ease-out forwards;
+    }
+
+    /* ── Интро оверлей ── */
+    #intro-overlay {
+        position:fixed; inset:0; background:#020817; z-index:10000;
+        display:flex; align-items:center; justify-content:center;
+        flex-direction:column; gap:16px; cursor:pointer;
+    }
+    #intro-overlay .intro-terminal {
+        font-family:'IBM Plex Mono',monospace; color:#0d59f2;
+        font-size:clamp(14px,2.5vw,22px); letter-spacing:.08em;
+    }
+    #intro-overlay .intro-name {
+        font-family:'Syne',sans-serif; font-weight:900;
+        font-size:clamp(32px,7vw,90px); color:#fff; letter-spacing:-.02em;
+        opacity:0; transform:scale(.85); transition:opacity .5s, transform .5s;
+    }
+    #intro-overlay .intro-skip {
+        font-family:'IBM Plex Mono',monospace; color:rgba(255,255,255,.3);
+        font-size:11px; letter-spacing:.2em; margin-top:20px;
+        text-transform:uppercase;
+    }
+    #intro-overlay .matrix-canvas {
+        position:absolute; inset:0; opacity:.15;
+    }
+    #intro-overlay.fade-out { animation:introFade .5s ease-out forwards; }
+    @keyframes introFade { to { opacity:0; pointer-events:none; } }
     </style>
 </head>
 <body class="font-display selection:bg-primary/30">
 
+<!-- ── Интро ── -->
+<div id="intro-overlay">
+    <canvas class="matrix-canvas" id="matrix-canvas"></canvas>
+    <div class="intro-terminal" id="intro-terminal"></div>
+    <div class="intro-name" id="intro-name">ЧИМИТДОРЖИ</div>
+    <div class="intro-skip">нажмите для пропуска</div>
+</div>
 <canvas id="bg-canvas"></canvas>
 <div id="cursor-dot"></div>
 <div id="cursor-outline"></div>
@@ -390,7 +465,7 @@
     <div class="reveal text-center max-w-5xl mx-auto">
         <div class="font-mono text-primary text-[10px] md:text-xs tracking-[0.35em] mb-5 uppercase inline-flex items-center gap-2">
             <span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
-            ДАРИЖАПОВ ЧИМИТДОРЖИ · ЧИТА · РОССИЯ
+            ДАРИЖАПОВ <span class="glitch-wrap" id="glitch-name" data-text="ЧИМИТДОРЖИ">ЧИМИТДОРЖИ</span> · ЧИТА · РОССИЯ
         </div>
 
         <h1 class="text-[2.6rem] sm:text-6xl md:text-[7rem] font-bold tracking-tighter leading-[0.88] mb-6 text-white uppercase">
@@ -1485,16 +1560,26 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // ── Счётчики ──
+// ── Счётчики с эффектом «взлома» ──
 const counterObs = new IntersectionObserver(entries => {
     entries.forEach(e => {
         if (e.isIntersecting) {
-            const el = e.target, target = +el.dataset.target, dur = 1800, start = performance.now();
-            const tick = now => {
-                const t = Math.min((now - start) / dur, 1);
-                el.textContent = Math.floor((1 - Math.pow(1 - t, 4)) * target);
-                if (t < 1) requestAnimationFrame(tick); else el.textContent = target;
-            };
-            requestAnimationFrame(tick);
+            const el = e.target, target = +el.dataset.target;
+            let hackFrames = 0, maxHack = 18;
+            const hackInterval = setInterval(() => {
+                el.textContent = Math.floor(Math.random() * target * 1.5);
+                hackFrames++;
+                if (hackFrames >= maxHack) {
+                    clearInterval(hackInterval);
+                    const dur = 1200, start = performance.now();
+                    const tick = now => {
+                        const t = Math.min((now - start) / dur, 1);
+                        el.textContent = Math.floor((1 - Math.pow(1 - t, 3)) * target);
+                        if (t < 1) requestAnimationFrame(tick); else { el.textContent = target + '+'; }
+                    };
+                    requestAnimationFrame(tick);
+                }
+            }, 60);
             counterObs.unobserve(el);
         }
     });
@@ -1519,16 +1604,19 @@ const skillObs = new IntersectionObserver(entries => {
 }, { threshold: 0.2 });
 document.querySelectorAll('.glass-card').forEach(c => skillObs.observe(c));
 
-// ── Нейронный фон ──
+// ── Нейронный фон — реакция на мышь ──
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
 let pts = [], raf2;
+let mouseX = -9999, mouseY = -9999;
+window.addEventListener('mousemove', ev => { mouseX = ev.clientX; mouseY = ev.clientY; });
 function resize() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const n = window.innerWidth < 768 ? 35 : 70;
     pts = Array.from({length:n}, () => ({
         x: Math.random()*canvas.width, y: Math.random()*canvas.height,
-        vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35
+        vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35,
+        ox:0, oy:0
     }));
 }
 window.addEventListener('resize', resize);
@@ -1537,6 +1625,19 @@ function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle='#0d59f2';
     pts.forEach(p => {
+        // Mouse attraction
+        const dx = mouseX - p.x, dy = mouseY - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 180 && dist > 0) {
+            const force = (180 - dist) / 180 * 0.4;
+            p.vx += dx / dist * force;
+            p.vy += dy / dist * force;
+        }
+        // Damping
+        p.vx *= 0.97; p.vy *= 0.97;
+        // Speed cap
+        const spd = Math.hypot(p.vx, p.vy);
+        if (spd > 2.5) { p.vx = p.vx/spd*2.5; p.vy = p.vy/spd*2.5; }
         p.x+=p.vx; p.y+=p.vy;
         if(p.x<0||p.x>canvas.width) p.vx*=-1;
         if(p.y<0||p.y>canvas.height) p.vy*=-1;
@@ -1580,7 +1681,146 @@ window.addEventListener('scroll', () => {
     stickyPanel.classList.toggle('visible', window.scrollY > 300);
 }, { passive: true });
 
-// ── Bottom nav — активная секция ──
+// ════════════════════════════════════════
+// ── ВАУ-ЭФФЕКТЫ ──
+// ════════════════════════════════════════
+
+// ── 1. Интро-анимация с матрицей ──
+(function() {
+    const overlay  = document.getElementById('intro-overlay');
+    const terminal = document.getElementById('intro-terminal');
+    const nameEl   = document.getElementById('intro-name');
+    const mc       = document.getElementById('matrix-canvas');
+    const mctx     = mc.getContext('2d');
+    if (!overlay) return;
+
+    function resizeMatrix() { mc.width = window.innerWidth; mc.height = window.innerHeight; }
+    resizeMatrix();
+    window.addEventListener('resize', resizeMatrix);
+
+    const cols = Math.floor(window.innerWidth / 16);
+    const drops = Array(cols).fill(0);
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナ';
+    let matRaf;
+    function drawMatrix() {
+        mctx.fillStyle = 'rgba(2,8,23,0.06)';
+        mctx.fillRect(0, 0, mc.width, mc.height);
+        mctx.fillStyle = '#0d59f2'; mctx.font = '14px monospace';
+        drops.forEach((y, i) => {
+            mctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, y * 16);
+            drops[i] = (y * 16 > mc.height && Math.random() > 0.975) ? 0 : y + 1;
+        });
+        matRaf = requestAnimationFrame(drawMatrix);
+    }
+    drawMatrix();
+
+    const lines = ['> ИНИЦИАЛИЗАЦИЯ...', '> ЗАГРУЗКА ПРОФИЛЯ...', '> ДАРИЖАПОВ ЧИМИТДОРЖИ', '> СИСТЕМА ГОТОВА ✓'];
+    let li = 0, ci = 0;
+    terminal.textContent = '';
+
+    function typeNext() {
+        if (li >= lines.length) {
+            nameEl.style.opacity = '1'; nameEl.style.transform = 'scale(1)';
+            setTimeout(finishIntro, 900);
+            return;
+        }
+        if (ci < lines[li].length) {
+            terminal.textContent = lines[li].slice(0, ++ci);
+            setTimeout(typeNext, li === 2 ? 55 : 35);
+        } else {
+            setTimeout(() => { li++; ci = 0; terminal.textContent = ''; typeNext(); }, li === lines.length - 1 ? 600 : 280);
+        }
+    }
+    setTimeout(typeNext, 300);
+
+    function finishIntro() {
+        cancelAnimationFrame(matRaf);
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.remove(), 520);
+    }
+    overlay.addEventListener('click', finishIntro);
+})();
+
+// ── 2. Курсор-след ──
+(function() {
+    const isMobile = () => window.matchMedia('(pointer:coarse)').matches;
+
+    // Desktop trail
+    if (!isMobile()) {
+        const trail = [];
+        const N = 10;
+        for (let i = 0; i < N; i++) {
+            const d = document.createElement('div');
+            d.className = 'cursor-dot';
+            d.style.opacity = (1 - i/N) * 0.85;
+            d.style.width = d.style.height = (8 - i * 0.6) + 'px';
+            document.body.appendChild(d);
+            trail.push({el: d, x: -100, y: -100});
+        }
+        const mouse = {x: -100, y: -100};
+        document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        let px = mouse.x, py = mouse.y;
+        const history = Array(N).fill({x:-100,y:-100});
+        function animTrail() {
+            history.unshift({x: mouse.x, y: mouse.y});
+            history.pop();
+            history.forEach((pos, i) => {
+                trail[i].el.style.left = pos.x + 'px';
+                trail[i].el.style.top  = pos.y + 'px';
+            });
+            requestAnimationFrame(animTrail);
+        }
+        animTrail();
+    } else {
+        // Mobile touch ripple
+        document.addEventListener('touchstart', e => {
+            Array.from(e.changedTouches).forEach(t => {
+                const r = document.createElement('div');
+                r.className = 'touch-ripple';
+                r.style.left = t.clientX + 'px';
+                r.style.top  = t.clientY + 'px';
+                document.body.appendChild(r);
+                setTimeout(() => r.remove(), 700);
+            });
+        }, {passive: true});
+    }
+})();
+
+// ── 3. Звук hover (Web Audio API) ──
+(function() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    let actx;
+    function playClick() {
+        if (!actx) actx = new AudioCtx();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain); gain.connect(actx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, actx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, actx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.04, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.08);
+        osc.start(); osc.stop(actx.currentTime + 0.09);
+    }
+    document.querySelectorAll('a, button, .tab-btn, .case-card').forEach(el => {
+        el.addEventListener('mouseenter', playClick);
+    });
+})();
+
+// ── 4. Glitch-эффект на имени (раз в 5 сек) ──
+(function() {
+    const el = document.getElementById('glitch-name');
+    if (!el) return;
+    setInterval(() => {
+        el.classList.add('glitching');
+        setTimeout(() => el.classList.remove('glitching'), 320);
+    }, 5000);
+    // Первый glitch через 2 сек
+    setTimeout(() => { el.classList.add('glitching'); setTimeout(() => el.classList.remove('glitching'), 320); }, 2000);
+})();
+
+
 const bnav = document.getElementById('bottom-nav');
 const bnavItems = document.querySelectorAll('.bnav-item');
 const sections = document.querySelectorAll('section[id], footer[id]');
