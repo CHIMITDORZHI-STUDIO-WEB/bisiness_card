@@ -1141,6 +1141,46 @@
             });
         });
     </script>
+
+    <!-- Cookie Banner -->
+    <div id="cookieBanner" style="
+        display:none; position:fixed; bottom:0; left:0; right:0; z-index:10000;
+        background:rgba(13,17,23,0.97); border-top:1px solid rgba(255,255,255,0.08);
+        backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+        padding:16px 24px; font-family:'Syne',sans-serif;
+        animation:cookieSlideUp .4s ease-out forwards;
+    ">
+        <style>
+            @keyframes cookieSlideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+            #cookieBanner .cookie-inner{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;max-width:960px;margin:0 auto}
+            #cookieBanner p{color:#cbd5e1;font-size:14px;margin:0;line-height:1.5}
+            #cookieBanner a{color:#4b85f6;text-decoration:underline;text-underline-offset:2px}
+            #cookieBanner a:hover{color:#6b9fff}
+            #cookieBanner button{background:#0d59f2;color:#fff;border:none;padding:8px 20px;border-radius:8px;
+                font-family:'Syne',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s}
+            #cookieBanner button:hover{background:#4b85f6}
+        </style>
+        <div class="cookie-inner">
+            <p>Мы используем куки, чтобы сайт работал лучше. Оставаясь с нами, вы соглашаетесь с
+                <a href="privacy-policy.html">Политикой конфиденциальности</a>.</p>
+            <button onclick="acceptCookies()">Принять</button>
+        </div>
+    </div>
+    <script>
+        (function(){
+            if(!localStorage.getItem('cookiesAccepted')){
+                document.getElementById('cookieBanner').style.display='block';
+            }
+        })();
+        function acceptCookies(){
+            localStorage.setItem('cookiesAccepted','true');
+            var b=document.getElementById('cookieBanner');
+            b.style.transition='transform .3s ease, opacity .3s ease';
+            b.style.transform='translateY(100%)';
+            b.style.opacity='0';
+            setTimeout(function(){b.style.display='none'},300);
+        }
+    </script>
 </body>
 
 </html>
